@@ -1,0 +1,162 @@
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import Navbar from "../Components/Navbar";
+import Footer from "../Components/Footer";
+import { products } from "../Data/products";
+import { useUser } from "../Context/userContext";
+import Product from "../Pages/Product"; // Product card component
+
+export default function Home() {
+  const { user, signup, login, logout } = useUser();
+
+  const [showSignup, setShowSignup] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+
+  const [signupData, setSignupData] = useState({ name: "", email: "", password: "" });
+  const [loginData, setLoginData] = useState({ email: "", password: "" });
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    await signup(signupData.name, signupData.email, signupData.password);
+    setShowSignup(false);
+    setSignupData({ name: "", email: "", password: "" });
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    await login(loginData.email, loginData.password);
+    setShowLogin(false);
+    setLoginData({ email: "", password: "" });
+  };
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      {/* Navbar */}
+      <Navbar
+        user={user}
+        onShowSignup={() => setShowSignup(true)}
+        onShowLogin={() => setShowLogin(true)}
+        onLogout={logout}
+      />
+
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-24 px-6 text-center rounded-md mb-16">
+        <h1 className="text-5xl font-extrabold mb-4">Welcome to Waspomind</h1>
+        <p className="text-lg max-w-2xl mx-auto mb-8">
+          Explore books and digital publications on culture, religion, and humanity — delivered directly to readers worldwide.
+        </p>
+        <div className="flex justify-center gap-4 flex-wrap">
+          <Link
+            to="/products"
+            className="bg-yellow-400 text-blue-700 px-6 py-3 rounded font-semibold hover:bg-yellow-300 transition"
+          >
+            Explore Products
+          </Link>
+          <Link
+            to="/about"
+            className="bg-white text-blue-600 px-6 py-3 rounded font-semibold hover:bg-gray-100 transition"
+          >
+            About Waspomind
+          </Link>
+        </div>
+      </div>
+
+      {/* Signup Modal */}
+      {showSignup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow w-96 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-600"
+              onClick={() => setShowSignup(false)}
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Sign Up</h2>
+            <form onSubmit={handleSignup} className="flex flex-col gap-4">
+              <input
+                type="text"
+                placeholder="Name"
+                value={signupData.name}
+                onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
+                className="border px-4 py-2 rounded"
+                required
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={signupData.email}
+                onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                className="border px-4 py-2 rounded"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password (8–12 chars, 1 uppercase)"
+                value={signupData.password}
+                onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                className="border px-4 py-2 rounded"
+                pattern="(?=.*[A-Z]).{8,12}"
+                title="Password must be 8–12 characters and include at least 1 uppercase letter"
+                required
+              />
+              <button
+                type="submit"
+                className="bg-blue-600 text-white py-2 rounded hover:bg-blue-500 transition"
+              >
+                Sign Up
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Login Modal */}
+      {showLogin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow w-96 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-600"
+              onClick={() => setShowLogin(false)}
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Login</h2>
+            <form onSubmit={handleLogin} className="flex flex-col gap-4">
+              <input
+                type="email"
+                placeholder="Email"
+                value={loginData.email}
+                onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                className="border px-4 py-2 rounded"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={loginData.password}
+                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                className="border px-4 py-2 rounded"
+                required
+              />
+              <button
+                type="submit"
+                className="bg-green-600 text-white py-2 rounded hover:bg-green-500 transition"
+              >
+                Login
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Product Grid */}
+      <main className="px-6 pb-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        {products.map((product) => (
+          <Product key={product.id} product={product} showSummary={false} /> // <-- hide summary here
+        ))}
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
