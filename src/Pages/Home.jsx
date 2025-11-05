@@ -1,21 +1,26 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
 import { products } from "../Data/products";
-import Product from "../Pages/Product"; // Product card component
+import Product from "../Pages/Product";
 import { useUser } from "../Context/userContext";
 import { useCart } from "../Context/cartContext";
+import { Eye, EyeOff } from "lucide-react"; // 👁️ for toggling password visibility
 
 export default function Home() {
   const { user, signup, login, logout } = useUser();
   const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   const [showSignup, setShowSignup] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
 
   const [signupData, setSignupData] = useState({ name: "", email: "", password: "" });
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -91,16 +96,25 @@ export default function Home() {
                 className="border px-4 py-2 rounded"
                 required
               />
-              <input
-                type="password"
-                placeholder="Password (8–12 chars, 1 uppercase)"
-                value={signupData.password}
-                onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                className="border px-4 py-2 rounded"
-                pattern="(?=.*[A-Z]).{8,12}"
-                title="Password must be 8–12 characters and include at least 1 uppercase letter"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showSignupPassword ? "text" : "password"}
+                  placeholder="Password (8–12 chars, 1 uppercase)"
+                  value={signupData.password}
+                  onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                  className="border px-4 py-2 rounded w-full"
+                  pattern="(?=.*[A-Z]).{8,12}"
+                  title="Password must be 8–12 characters and include at least 1 uppercase letter"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-2.5 text-gray-600"
+                  onClick={() => setShowSignupPassword(!showSignupPassword)}
+                >
+                  {showSignupPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
               <button
                 type="submit"
                 className="bg-blue-600 text-white py-2 rounded hover:bg-blue-500 transition"
@@ -132,14 +146,33 @@ export default function Home() {
                 className="border px-4 py-2 rounded"
                 required
               />
-              <input
-                type="password"
-                placeholder="Password"
-                value={loginData.password}
-                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                className="border px-4 py-2 rounded"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showLoginPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={loginData.password}
+                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                  className="border px-4 py-2 rounded w-full"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-2.5 text-gray-600"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                >
+                  {showLoginPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+
+              {/* ✅ Forgot password link */}
+              <Link
+                to="/forgot-password"
+                onClick={() => setShowLogin(false)}
+                className="text-sm text-blue-600 hover:underline text-right"
+              >
+                Forgot Password?
+              </Link>
+
               <button
                 type="submit"
                 className="bg-green-600 text-white py-2 rounded hover:bg-green-500 transition"
