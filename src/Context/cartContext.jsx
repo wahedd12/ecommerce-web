@@ -1,16 +1,34 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { useUser } from "./userContext";
+import { API_URL } from "../Config/api";
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
   const { user, token } = useUser();
+  const [cart, setCart] = useState([]);
 
-  const [cart, setCart] = useState(
-    JSON.parse(localStorage.getItem("cart")) || []
-  );
+  // Load cart from backend when user logs in
+  useEffect(() => {
+    const fetchCart = async () => {
+      if (!user || !token) {
+        setCart([]);
+        return;
+      }
+      try {
+        const res = await axios.get(`${API_URL}/cart`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCart(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch cart:", err.response?.data || err.message);
+      }
+    };
+    fetchCart();
+  }, [user, token]);
 
+  // Persist cart in localStorage
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
@@ -20,14 +38,11 @@ export function CartProvider({ children }) {
     if (!user) return;
 
     const productPrice = Number(product.price) || 0;
-
     const existing = cart.find((item) => item.id === product.id);
 
     if (existing) {
       const updatedCart = cart.map((item) =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + quantity }
-          : item
+        item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
       );
       setCart(updatedCart);
     } else {
@@ -37,7 +52,7 @@ export function CartProvider({ children }) {
     // Sync with backend
     try {
       await axios.post(
-        "http://localhost:5000/cart",
+        `${API_URL}/cart`,
         { productId: product.id, quantity },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -53,11 +68,10 @@ export function CartProvider({ children }) {
     );
     setCart(updatedCart);
 
-    // Sync with backend
     if (!user) return;
     try {
       await axios.post(
-        "http://localhost:5000/cart",
+        `${API_URL}/cart`,
         { productId, quantity },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -72,7 +86,7 @@ export function CartProvider({ children }) {
 
     if (!user) return;
     try {
-      await axios.delete(`http://localhost:5000/cart/${productId}`, {
+      await axios.delete(`${API_URL}/cart/${productId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (err) {
@@ -82,14 +96,14 @@ export function CartProvider({ children }) {
 
   // Clear cart
   const clearCart = async () => {
-    setCart([]);
     if (!user) return;
     try {
       for (const item of cart) {
-        await axios.delete(`http://localhost:5000/cart/${item.id}`, {
+        await axios.delete(`${API_URL}/cart/${item.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
+      setCart([]);
     } catch (err) {
       console.error("Cart clear failed:", err.response?.data || err.message);
     }

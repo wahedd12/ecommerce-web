@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
 import { products } from "../Data/products";
-import { useUser } from "../Context/userContext";
 import Product from "../Pages/Product"; // Product card component
+import { useUser } from "../Context/userContext";
+import { useCart } from "../Context/cartContext";
 
 export default function Home() {
   const { user, signup, login, logout } = useUser();
+  const { addToCart } = useCart();
 
   const [showSignup, setShowSignup] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -152,7 +154,12 @@ export default function Home() {
       {/* Product Grid */}
       <main className="px-6 pb-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
         {products.map((product) => (
-          <Product key={product.id} product={product} showSummary={false} /> // <-- hide summary here
+          <Product
+            key={product.id}
+            product={product}
+            showSummary={false}
+            onAddToCart={() => addToCart(product, 1)}
+          />
         ))}
       </main>
 
