@@ -10,11 +10,29 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+
+// ✅ CORS Configuration
+const allowedOrigins = [
+  process.env.CLIENT_URL,           // e.g. https://waspomind.vercel.app
+  "http://localhost:5173",          // for local development
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/waspomind";
+const MONGO_URI = process.env.MONGO_URI;
 
 // ✅ MongoDB connection
 mongoose
@@ -41,7 +59,8 @@ const generateToken = (user) => {
 // ✅ Middleware to authenticate user
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return res.status(401).json({ message: "Unauthorized" });
+  if (!authHeader || !authHeader.startsWith("Bearer "))
+    return res.status(401).json({ message: "Unauthorized" });
 
   const token = authHeader.split(" ")[1];
   try {
@@ -58,7 +77,9 @@ app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!/^(?=.*[A-Z]).{8,12}$/.test(password)) {
-      return res.status(400).json({ message: "Password must be 8–12 characters with at least one uppercase letter." });
+      return res.status(400).json({
+        message: "Password must be 8–12 characters with at least one uppercase letter.",
+      });
     }
 
     const existingUser = await User.findOne({ email });
@@ -103,10 +124,10 @@ app.post("/forgot-password", async (req, res) => {
 
     const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "15m" });
     user.resetToken = resetToken;
-    user.resetTokenExpiration = Date.now() + 15 * 60 * 1000; // 15 min expiry
+    user.resetTokenExpiration = Date.now() + 15 * 60 * 1000;
     await user.save();
 
-    // ✅ Send Email (configure your Gmail or SMTP)
+    // ✅ Send Email
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -115,13 +136,13 @@ app.post("/forgot-password", async (req, res) => {
       },
     });
 
-    const resetLink = `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
     await transporter.sendMail({
       to: email,
       subject: "Password Reset Request",
       html: `
         <p>Hello ${user.name || "User"},</p>
-        <p>You requested to reset your password. Click the link below to reset it:</p>
+        <p>You requested to reset your password. Click below:</p>
         <a href="${resetLink}" target="_blank">${resetLink}</a>
         <p>This link expires in 15 minutes.</p>
       `,
@@ -145,7 +166,9 @@ app.post("/reset-password", async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired reset token" });
 
     if (!/^(?=.*[A-Z]).{8,12}$/.test(newPassword)) {
-      return res.status(400).json({ message: "Password must be 8–12 characters with at least one uppercase letter." });
+      return res.status(400).json({
+        message: "Password must be 8–12 characters with at least one uppercase letter.",
+      });
     }
 
     user.password = await bcrypt.hash(newPassword, 10);
@@ -171,7 +194,7 @@ app.delete("/delete-account", authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ Root test route
+// ✅ Root route
 app.get("/", (req, res) => {
   res.send("Waspomind backend is running ✅");
 });
