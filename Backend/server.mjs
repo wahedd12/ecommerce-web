@@ -2,7 +2,6 @@ import express from "express";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import cors from "cors";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 
@@ -11,53 +10,47 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// ✅ CORS Configuration
-// ✅ CORS Configuration
+// ✅ --- FIXED CORS CONFIG ---
 const allowedOrigins = [
   process.env.CLIENT_URL,
-  "https://ecommerce-eta-peach-66.vercel.app",   // ✅ your main frontend
+  "https://ecommerce-eta-peach-66.vercel.app",
   "https://waspomind.vercel.app",
   "https://ecommerce-9xd374ctw-wahedd12s-projects.vercel.app",
   "https://ecommerce-7patq44ec-wahedd12s-projects.vercel.app",
   "http://localhost:5173",
 ];
 
-
-
-// Dynamically allow any Vercel preview deployments (optional, for convenience)
 const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) {
-        // Allow Postman, curl, etc.
-        callback(null, true);
-      } else if (
-        allowedOrigins.includes(origin) ||
-        vercelPreviewRegex.test(origin)
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS error: ${origin} not allowed`));
-      }
-    },
-    credentials: true,
-  })
-);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
 
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
 
+  // ✅ Crucial fix: respond to preflight OPTIONS properly
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  next();
+});
+
+// ✅ --- DATABASE SETUP ---
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 const MONGO_URI = process.env.MONGO_URI;
 
-// ✅ MongoDB connection
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB error:", err));
 
-// ✅ User Schema
+// ✅ --- USER MODEL ---
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -68,12 +61,14 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// ✅ Helper to generate JWT
+// ✅ --- HELPER ---
 const generateToken = (user) => {
-  return jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+    expiresIn: "7d",
+  });
 };
 
-// ✅ Middleware to authenticate user
+// ✅ --- AUTH MIDDLEWARE ---
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer "))
@@ -89,18 +84,21 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// ✅ Signup route
+// ✅ --- SIGNUP ---
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
     if (!/^(?=.*[A-Z]).{8,12}$/.test(password)) {
       return res.status(400).json({
-        message: "Password must be 8–12 characters with at least one uppercase letter.",
+        message:
+          "Password must be 8–12 characters with at least one uppercase letter.",
       });
     }
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already registered" });
+    if (existingUser)
+      return res.status(400).json({ message: "Email already registered" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashedPassword });
@@ -113,7 +111,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// ✅ Login route
+// ✅ --- LOGIN ---
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -131,20 +129,22 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ✅ Forgot Password
+// ✅ --- FORGOT PASSWORD ---
 app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "No user found with that email" });
+    if (!user)
+      return res.status(404).json({ message: "No user found with that email" });
 
-    const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "15m" });
+    const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, {
+      expiresIn: "15m",
+    });
     user.resetToken = resetToken;
     user.resetTokenExpiration = Date.now() + 15 * 60 * 1000;
     await user.save();
 
-    // ✅ Send Email
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -172,7 +172,7 @@ app.post("/forgot-password", async (req, res) => {
   }
 });
 
-// ✅ Reset Password
+// ✅ --- RESET PASSWORD ---
 app.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
   try {
@@ -184,7 +184,8 @@ app.post("/reset-password", async (req, res) => {
 
     if (!/^(?=.*[A-Z]).{8,12}$/.test(newPassword)) {
       return res.status(400).json({
-        message: "Password must be 8–12 characters with at least one uppercase letter.",
+        message:
+          "Password must be 8–12 characters with at least one uppercase letter.",
       });
     }
 
@@ -200,7 +201,7 @@ app.post("/reset-password", async (req, res) => {
   }
 });
 
-// ✅ Delete Account
+// ✅ --- DELETE ACCOUNT ---
 app.delete("/delete-account", authMiddleware, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.user.id);
@@ -211,9 +212,10 @@ app.delete("/delete-account", authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ Root route
+// ✅ --- ROOT ROUTE ---
 app.get("/", (req, res) => {
   res.send("Waspomind backend is running ✅");
 });
 
+// ✅ --- SERVER START ---
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
