@@ -12,26 +12,34 @@ const app = express();
 app.use(express.json());
 
 // ✅ CORS Configuration
+// ✅ CORS Configuration
 const allowedOrigins = [
-  process.env.CLIENT_URL,                  // main frontend
-  "https://waspomind.vercel.app",          // production frontend
-  "https://ecommerce-9xd374ctw-wahedd12s-projects.vercel.app", // vercel preview
-  "http://localhost:5173",                 // dev
+  process.env.CLIENT_URL,   // main frontend, e.g., https://waspomind.vercel.app
+  "http://localhost:5173",  // local dev
 ];
 
+// Dynamically allow any Vercel preview deployments (optional, for convenience)
+const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin) {
+        // Allow Postman, curl, etc.
+        callback(null, true);
+      } else if (
+        allowedOrigins.includes(origin) ||
+        vercelPreviewRegex.test(origin)
+      ) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        callback(new Error(`CORS error: ${origin} not allowed`));
       }
     },
     credentials: true,
   })
 );
+
 
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
