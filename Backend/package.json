@@ -7,12 +7,12 @@
     "start": "node Backend/server.mjs"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "mongoose": "^8.7.1",
-    "bcrypt": "^6.0.0",
-    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.7.1",
     "nodemailer": "^6.9.15"
   }
 }
