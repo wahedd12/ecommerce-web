@@ -13,9 +13,12 @@ app.use(express.json());
 
 // ✅ CORS Configuration
 const allowedOrigins = [
-  process.env.CLIENT_URL,           // e.g. https://waspomind.vercel.app
-  "http://localhost:5173",          // for local development
+  process.env.CLIENT_URL,                  // main frontend
+  "https://waspomind.vercel.app",          // production frontend
+  "https://ecommerce-9xd374ctw-wahedd12s-projects.vercel.app", // vercel preview
+  "http://localhost:5173",                 // dev
 ];
+
 
 app.use(
   cors({
