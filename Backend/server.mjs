@@ -15,11 +15,13 @@ app.use(express.json());
 // ✅ CORS Configuration
 const allowedOrigins = [
   process.env.CLIENT_URL,
+  "https://ecommerce-eta-peach-66.vercel.app",   // ✅ your main frontend
   "https://waspomind.vercel.app",
   "https://ecommerce-9xd374ctw-wahedd12s-projects.vercel.app",
-  "https://ecommerce-7patq44ec-wahedd12s-projects.vercel.app", // add this one
+  "https://ecommerce-7patq44ec-wahedd12s-projects.vercel.app",
   "http://localhost:5173",
 ];
+
 
 
 // Dynamically allow any Vercel preview deployments (optional, for convenience)
