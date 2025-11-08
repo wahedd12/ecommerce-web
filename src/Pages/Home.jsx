@@ -99,7 +99,7 @@ export default function Home() {
               <div className="relative">
                 <input
                   type={showSignupPassword ? "text" : "password"}
-                  placeholder="Password (8–12 chars, 1 uppercase)"
+                  placeholder="Password (8–12 chars)"
                   value={signupData.password}
                   onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
                   className="border px-4 py-2 rounded w-full"
