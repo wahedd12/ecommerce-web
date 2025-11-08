@@ -86,16 +86,10 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // ✅ --- SIGNUP ---
+// ✅ Signup route
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
-    if (!/^(?=.*[A-Z]).{8,12}$/.test(password)) {
-      return res.status(400).json({
-        message:
-          "Password must be 8–12 characters with at least one uppercase letter.",
-      });
-    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser)
@@ -111,6 +105,7 @@ app.post("/signup", async (req, res) => {
     res.status(500).json({ message: "Signup failed" });
   }
 });
+
 
 // ✅ --- LOGIN ---
 app.post("/login", async (req, res) => {
@@ -174,6 +169,7 @@ app.post("/forgot-password", async (req, res) => {
 });
 
 // ✅ --- RESET PASSWORD ---
+// ✅ Reset Password
 app.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
   try {
@@ -182,13 +178,6 @@ app.post("/reset-password", async (req, res) => {
 
     if (!user || user.resetToken !== token || Date.now() > user.resetTokenExpiration)
       return res.status(400).json({ message: "Invalid or expired reset token" });
-
-    if (!/^(?=.*[A-Z]).{8,12}$/.test(newPassword)) {
-      return res.status(400).json({
-        message:
-          "Password must be 8–12 characters with at least one uppercase letter.",
-      });
-    }
 
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetToken = undefined;
@@ -201,6 +190,7 @@ app.post("/reset-password", async (req, res) => {
     res.status(400).json({ message: "Invalid or expired reset token" });
   }
 });
+
 
 // ✅ --- DELETE ACCOUNT ---
 app.delete("/delete-account", authMiddleware, async (req, res) => {
