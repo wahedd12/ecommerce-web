@@ -50,7 +50,7 @@ export default function Home() {
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-24 px-6 text-center rounded-md mb-16">
         <h1 className="text-5xl font-extrabold mb-4">Welcome to Waspomind</h1>
         <p className="text-lg max-w-2xl mx-auto mb-8">
-          Explore books, and all digital publications on culture, religion, and humanity — delivered directly to readers worldwide.
+          Explore books, and all digital publications on culture, religion, psychology and humanity — delivered directly to readers worldwide.
         </p>
         <div className="flex justify-center gap-4 flex-wrap">
           <Link
