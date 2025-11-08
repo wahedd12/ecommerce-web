@@ -10,38 +10,34 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// ✅ --- FIXED CORS CONFIG ---
+// ✅ --- FIXED UNIVERSAL CORS ---
 const allowedOrigins = [
   process.env.CLIENT_URL,
   "https://ecommerce-eta-peach-66.vercel.app",
   "https://waspomind.vercel.app",
-  "https://ecommerce-9xd374ctw-wahedd12s-projects.vercel.app",
-  "https://ecommerce-7patq44ec-wahedd12s-projects.vercel.app",
-  "https://ecommerce-pbkehvvvh-wahedd12s-projects.vercel.app", // 👈 add this one
   "http://localhost:5173",
 ];
-
 const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
     res.header("Access-Control-Allow-Origin", origin);
+  } else {
+    res.header("Access-Control-Allow-Origin", "*"); // fallback for any origin
   }
 
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Credentials", "true");
 
-  // ✅ Crucial fix: respond to preflight OPTIONS properly
   if (req.method === "OPTIONS") {
-    return res.status(200).end();
+    return res.sendStatus(200);
   }
-
   next();
 });
 
-// ✅ --- DATABASE SETUP ---
+// ✅ --- DATABASE ---
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 const MONGO_URI = process.env.MONGO_URI;
@@ -63,16 +59,13 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ✅ --- HELPER ---
-const generateToken = (user) => {
-  return jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
-    expiresIn: "7d",
-  });
-};
+const generateToken = (user) =>
+  jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 
 // ✅ --- AUTH MIDDLEWARE ---
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer "))
+  if (!authHeader?.startsWith("Bearer "))
     return res.status(401).json({ message: "Unauthorized" });
 
   const token = authHeader.split(" ")[1];
@@ -86,7 +79,6 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // ✅ --- SIGNUP ---
-// ✅ Signup route
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -95,17 +87,17 @@ app.post("/signup", async (req, res) => {
     if (existingUser)
       return res.status(400).json({ message: "Email already registered" });
 
+    // ⚡ Removed complex password rules (now any password works)
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashedPassword });
-    const token = generateToken(user);
 
+    const token = generateToken(user);
     res.json({ token, name: user.name, email: user.email });
   } catch (err) {
     console.error("Signup error:", err);
     res.status(500).json({ message: "Signup failed" });
   }
 });
-
 
 // ✅ --- LOGIN ---
 app.post("/login", async (req, res) => {
@@ -134,19 +126,14 @@ app.post("/forgot-password", async (req, res) => {
     if (!user)
       return res.status(404).json({ message: "No user found with that email" });
 
-    const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, {
-      expiresIn: "15m",
-    });
+    const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "15m" });
     user.resetToken = resetToken;
     user.resetTokenExpiration = Date.now() + 15 * 60 * 1000;
     await user.save();
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
 
     const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
@@ -169,7 +156,6 @@ app.post("/forgot-password", async (req, res) => {
 });
 
 // ✅ --- RESET PASSWORD ---
-// ✅ Reset Password
 app.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
   try {
@@ -191,7 +177,6 @@ app.post("/reset-password", async (req, res) => {
   }
 });
 
-
 // ✅ --- DELETE ACCOUNT ---
 app.delete("/delete-account", authMiddleware, async (req, res) => {
   try {
@@ -204,9 +189,7 @@ app.delete("/delete-account", authMiddleware, async (req, res) => {
 });
 
 // ✅ --- ROOT ROUTE ---
-app.get("/", (req, res) => {
-  res.send("Waspomind backend is running ✅");
-});
+app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
 // ✅ --- SERVER START ---
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
