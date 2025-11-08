@@ -17,6 +17,7 @@ const allowedOrigins = [
   "https://waspomind.vercel.app",
   "https://ecommerce-9xd374ctw-wahedd12s-projects.vercel.app",
   "https://ecommerce-7patq44ec-wahedd12s-projects.vercel.app",
+  "https://ecommerce-pbkehvvvh-wahedd12s-projects.vercel.app", // 👈 add this one
   "http://localhost:5173",
 ];
 
