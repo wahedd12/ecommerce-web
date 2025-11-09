@@ -4,41 +4,38 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-// ✅ --- LOG ALL INCOMING ORIGINS ---
-app.use((req, res, next) => {
-  console.log("Incoming request from origin:", req.headers.origin || "no origin (Postman / mobile / curl)");
-  next();
-});
-
 // ✅ --- CORS CONFIG ---
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    process.env.CLIENT_URL,                  // production
-    "http://localhost:5173",                 // local dev
-    "https://waspomind.vercel.app"           // production/staging
-  ];
-  const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
+const allowedOrigins = [
+  process.env.CLIENT_URL, // production
+  "https://waspomind.vercel.app",
+  "http://localhost:5173",
+];
 
-  if (!origin || allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
+const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
-    if (req.method === "OPTIONS") return res.sendStatus(200); // handle preflight
-    return next();
-  }
-
-  console.warn("Blocked by CORS:", origin);
-  return res.status(403).json({ message: "Not allowed by CORS" });
-});
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // allow Postman or mobile apps
+      if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+        return callback(null, true);
+      }
+      console.warn("Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+    preflightContinue: false, // ensures OPTIONS requests are handled automatically
+  })
+);
 
 // ✅ --- DATABASE ---
 const PORT = process.env.PORT || 5000;
@@ -58,6 +55,7 @@ const userSchema = new mongoose.Schema({
   resetToken: String,
   resetTokenExpiration: Date,
 });
+
 const User = mongoose.model("User", userSchema);
 
 // ✅ --- TOKEN HELPER ---
@@ -81,7 +79,7 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// ✅ --- SIGNUP (NO PASSWORD RULES) ---
+// ✅ --- SIGNUP ---
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -154,7 +152,7 @@ app.post("/forgot-password", async (req, res) => {
   }
 });
 
-// ✅ --- RESET PASSWORD (NO RULES) ---
+// ✅ --- RESET PASSWORD ---
 app.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
   try {
