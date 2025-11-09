@@ -20,22 +20,21 @@ const allowedOrigins = [
 ];
 const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  } else {
-    res.header("Access-Control-Allow-Origin", "*"); // fallback for any origin
-  }
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-});
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // allow Postman or mobile apps
+      if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
 // ✅ --- DATABASE ---
 const PORT = process.env.PORT || 5000;
@@ -84,13 +83,12 @@ app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Allow absolutely any password, including empty strings
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    const hashedPassword = await bcrypt.hash(password || "", 10); // hashes even empty string
+    const hashedPassword = await bcrypt.hash(password || "", 10);
     const user = await User.create({ name, email, password: hashedPassword });
 
     const token = generateToken(user);
@@ -166,7 +164,6 @@ app.post("/reset-password", async (req, res) => {
     if (!user || user.resetToken !== token || Date.now() > user.resetTokenExpiration)
       return res.status(400).json({ message: "Invalid or expired reset token" });
 
-    // Accept any password, even empty
     user.password = await bcrypt.hash(newPassword || "", 10);
     user.resetToken = undefined;
     user.resetTokenExpiration = undefined;
