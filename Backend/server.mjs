@@ -4,11 +4,23 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json());  
+
+app.use(
+  cors({
+    origin: [
+      "https://ecommerce-eta-peach-66.vercel.app",
+      "https://waspomind.vercel.app",
+      "http://localhost:5173",
+    ],
+    credentials: true,
+  })
+);
 
 // ✅ --- FIXED UNIVERSAL CORS ---
 const allowedOrigins = [
