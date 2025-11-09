@@ -13,7 +13,8 @@ app.use(express.json());
 
 // ✅ --- CORS CONFIG ---
 const allowedOrigins = [
-  process.env.CLIENT_URL,
+  process.env.CLIENT_URL, // production
+  "https://ecommerce-git-master-wahedd12s-projects.vercel.app", // preview
   "https://waspomind.vercel.app",
   "http://localhost:5173",
 ];
