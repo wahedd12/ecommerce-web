@@ -14,7 +14,6 @@ app.use(express.json());
 // ✅ --- CORS CONFIG ---
 const allowedOrigins = [
   process.env.CLIENT_URL,
-  "https://ecommerce-eta-peach-66.vercel.app",
   "https://waspomind.vercel.app",
   "http://localhost:5173",
 ];
@@ -25,14 +24,15 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true); // allow Postman or mobile apps
       if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+        return callback(null, true);
       }
+      console.warn("Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
+    preflightContinue: false, // ensures OPTIONS requests are handled correctly
   })
 );
 
