@@ -4,38 +4,41 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
-import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-// ✅ --- CORS CONFIG ---
-const allowedOrigins = [
-  process.env.CLIENT_URL, // production
-  "https://ecommerce-git-master-wahedd12s-projects.vercel.app", // preview
-  "https://waspomind.vercel.app",
-  "http://localhost:5173",
-];
-const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
+// ✅ --- LOG ALL INCOMING ORIGINS ---
+app.use((req, res, next) => {
+  console.log("Incoming request from origin:", req.headers.origin || "no origin (Postman / mobile / curl)");
+  next();
+});
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow Postman or mobile apps
-      if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-        return callback(null, true);
-      }
-      console.warn("Blocked by CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-    preflightContinue: false, // ensures OPTIONS requests are handled correctly
-  })
-);
+// ✅ --- CORS CONFIG ---
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    process.env.CLIENT_URL,                  // production
+    "http://localhost:5173",                 // local dev
+    "https://waspomind.vercel.app"           // production/staging
+  ];
+  const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
+
+  if (!origin || allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+
+    if (req.method === "OPTIONS") return res.sendStatus(200); // handle preflight
+    return next();
+  }
+
+  console.warn("Blocked by CORS:", origin);
+  return res.status(403).json({ message: "Not allowed by CORS" });
+});
 
 // ✅ --- DATABASE ---
 const PORT = process.env.PORT || 5000;
@@ -55,7 +58,6 @@ const userSchema = new mongoose.Schema({
   resetToken: String,
   resetTokenExpiration: Date,
 });
-
 const User = mongoose.model("User", userSchema);
 
 // ✅ --- TOKEN HELPER ---
@@ -85,9 +87,7 @@ app.post("/signup", async (req, res) => {
     const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
+    if (existingUser) return res.status(400).json({ message: "Email already registered" });
 
     const hashedPassword = await bcrypt.hash(password || "", 10);
     const user = await User.create({ name, email, password: hashedPassword });
@@ -123,8 +123,7 @@ app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user)
-      return res.status(404).json({ message: "No user found with that email" });
+    if (!user) return res.status(404).json({ message: "No user found with that email" });
 
     const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "15m" });
     user.resetToken = resetToken;
