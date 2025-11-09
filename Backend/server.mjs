@@ -5,15 +5,33 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import cors from "cors";
+import path from "path";
 
-dotenv.config();
+// ── Load .env from parent directory (assuming .env is at project root, not in this 
+// same directory) ──
+dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
+
+console.log("Loaded MONGO_URI:", process.env.MONGO_URI);
+
+const MONGO_URI = process.env.MONGO_URI;
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
+const CLIENT_URL = process.env.CLIENT_URL;
+
+if (!MONGO_URI) {
+  console.error("❌ ERROR: MONGO_URI is not defined in environment variables.");
+  process.exit(1);
+}
+
+if (!CLIENT_URL) {
+  console.warn("⚠️ WARNING: CLIENT_URL is not defined. CORS may restrict access.");
+}
 
 const app = express();
 app.use(express.json());
 
-// ✅ --- CORS CONFIG ---
+// ── CORS CONFIG ──
 const allowedOrigins = [
-  process.env.CLIENT_URL, // production
+  CLIENT_URL,
   "https://waspomind.vercel.app",
   "http://localhost:5173",
 ];
@@ -23,12 +41,14 @@ const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 app.use(
   cors({
     origin: (origin, callback) => {
-      console.log("Incoming request origin:", origin);
-      if (!origin) return callback(null, true); // allow Postman or mobile apps
-      if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+      if (!origin) return callback(null, true); // allow Postman, mobile apps
+      if (
+        allowedOrigins.includes(origin) ||
+        vercelPreviewRegex.test(origin)
+      ) {
         return callback(null, true);
       }
-      console.warn("Blocked by CORS:", origin);
+      console.warn("Blocked by CORS origin:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -38,20 +58,15 @@ app.use(
   })
 );
 
-// ✅ --- Handle preflight OPTIONS requests globally ---
-app.options("*", cors());
-
-// ✅ --- DATABASE ---
+// ── DATABASE CONNECT ──
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
-const MONGO_URI = process.env.MONGO_URI;
 
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// ✅ --- USER MODEL ---
+// ── USER MODEL ──
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -62,15 +77,18 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// ✅ --- TOKEN HELPER ---
+// ── TOKEN HELPER ──
 const generateToken = (user) =>
-  jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+  jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+    expiresIn: "7d",
+  });
 
-// ✅ --- AUTH MIDDLEWARE ---
+// ── AUTH MIDDLEWARE ──
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer "))
+  if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
 
   const token = authHeader.split(" ")[1];
   try {
@@ -82,16 +100,23 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// ✅ --- SIGNUP ---
+// ── SIGNUP ──
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already registered" });
+    if (existingUser)
+      return res
+        .status(400)
+        .json({ message: "Email already registered" });
 
     const hashedPassword = await bcrypt.hash(password || "", 10);
-    const user = await User.create({ name, email, password: hashedPassword });
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+    });
 
     const token = generateToken(user);
     res.json({ token, name: user.name, email: user.email });
@@ -101,15 +126,17 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// ✅ --- LOGIN ---
+// ── LOGIN ──
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
 
     const valid = await bcrypt.compare(password || "", user.password);
-    if (!valid) return res.status(400).json({ message: "Invalid credentials" });
+    if (!valid)
+      return res.status(400).json({ message: "Invalid credentials" });
 
     const token = generateToken(user);
     res.json({ token, name: user.name, email: user.email });
@@ -119,24 +146,32 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ✅ --- FORGOT PASSWORD ---
+// ── FORGOT PASSWORD ──
 app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "No user found with that email" });
+    if (!user)
+      return res
+        .status(404)
+        .json({ message: "No user found with that email" });
 
-    const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "15m" });
+    const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, {
+      expiresIn: "15m",
+    });
     user.resetToken = resetToken;
     user.resetTokenExpiration = Date.now() + 15 * 60 * 1000;
     await user.save();
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
     });
 
-    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    const resetLink = `${CLIENT_URL}/reset-password?token=${resetToken}`;
     await transporter.sendMail({
       to: email,
       subject: "Password Reset Request",
@@ -155,15 +190,21 @@ app.post("/forgot-password", async (req, res) => {
   }
 });
 
-// ✅ --- RESET PASSWORD ---
+// ── RESET PASSWORD ──
 app.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.id);
 
-    if (!user || user.resetToken !== token || Date.now() > user.resetTokenExpiration)
-      return res.status(400).json({ message: "Invalid or expired reset token" });
+    if (
+      !user ||
+      user.resetToken !== token ||
+      Date.now() > user.resetTokenExpiration
+    )
+      return res
+        .status(400)
+        .json({ message: "Invalid or expired reset token" });
 
     user.password = await bcrypt.hash(newPassword || "", 10);
     user.resetToken = undefined;
@@ -177,7 +218,7 @@ app.post("/reset-password", async (req, res) => {
   }
 });
 
-// ✅ --- DELETE ACCOUNT ---
+// ── DELETE ACCOUNT ──
 app.delete("/delete-account", authMiddleware, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.user.id);
@@ -188,8 +229,10 @@ app.delete("/delete-account", authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ --- ROOT ROUTE ---
+// ── ROOT ROUTE ──
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
-// ✅ --- SERVER START ---
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// ── SERVER START ──
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
