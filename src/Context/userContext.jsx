@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { API_URL } from "../Config/api";
 
+
 const UserContext = createContext();
 
 export function UserProvider({ children }) {
@@ -18,15 +19,8 @@ export function UserProvider({ children }) {
     }
   }, [token, user]);
 
-  const validatePassword = (password) => /^(?=.*[A-Z]).{8,12}$/.test(password);
-
   // 🔹 SIGNUP
   const signup = async (name, email, password) => {
-    if (!validatePassword(password)) {
-      alert("Password must be 8–12 characters and include at least 1 uppercase letter.");
-      return;
-    }
-
     try {
       const res = await axios.post(`${API_URL}/signup`, { name, email, password });
       setUser({ name: res.data.name, email: res.data.email });
@@ -62,11 +56,6 @@ export function UserProvider({ children }) {
 
   // 🔹 RESET PASSWORD
   const resetPassword = async (token, newPassword) => {
-    if (!validatePassword(newPassword)) {
-      alert("Password must be 8–12 characters and include at least 1 uppercase letter.");
-      return;
-    }
-
     try {
       const res = await axios.post(`${API_URL}/reset-password`, { token, newPassword });
       alert(res.data.message || "Password reset successful! You can now log in.");

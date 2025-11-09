@@ -9,20 +9,9 @@ import cors from "cors";
 dotenv.config();
 
 const app = express();
-app.use(express.json());  
+app.use(express.json());
 
-app.use(
-  cors({
-    origin: [
-      "https://ecommerce-eta-peach-66.vercel.app",
-      "https://waspomind.vercel.app",
-      "http://localhost:5173",
-    ],
-    credentials: true,
-  })
-);
-
-// ✅ --- FIXED UNIVERSAL CORS ---
+// ✅ --- CORS CONFIG ---
 const allowedOrigins = [
   process.env.CLIENT_URL,
   "https://ecommerce-eta-peach-66.vercel.app",
@@ -38,7 +27,6 @@ app.use((req, res, next) => {
   } else {
     res.header("Access-Control-Allow-Origin", "*"); // fallback for any origin
   }
-
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Credentials", "true");
@@ -57,7 +45,7 @@ const MONGO_URI = process.env.MONGO_URI;
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ✅ --- USER MODEL ---
 const userSchema = new mongoose.Schema({
@@ -70,15 +58,16 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// ✅ --- HELPER ---
+// ✅ --- TOKEN HELPER ---
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 
 // ✅ --- AUTH MIDDLEWARE ---
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer "))
+  if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
 
   const token = authHeader.split(" ")[1];
   try {
@@ -90,17 +79,18 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// ✅ --- SIGNUP ---
+// ✅ --- SIGNUP (NO PASSWORD RULES) ---
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // Allow absolutely any password, including empty strings
     const existingUser = await User.findOne({ email });
-    if (existingUser)
+    if (existingUser) {
       return res.status(400).json({ message: "Email already registered" });
+    }
 
-    // ⚡ Removed complex password rules (now any password works)
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password || "", 10); // hashes even empty string
     const user = await User.create({ name, email, password: hashedPassword });
 
     const token = generateToken(user);
@@ -118,7 +108,7 @@ app.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const valid = await bcrypt.compare(password, user.password);
+    const valid = await bcrypt.compare(password || "", user.password);
     if (!valid) return res.status(400).json({ message: "Invalid credentials" });
 
     const token = generateToken(user);
@@ -132,7 +122,6 @@ app.post("/login", async (req, res) => {
 // ✅ --- FORGOT PASSWORD ---
 app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
-
   try {
     const user = await User.findOne({ email });
     if (!user)
@@ -167,7 +156,7 @@ app.post("/forgot-password", async (req, res) => {
   }
 });
 
-// ✅ --- RESET PASSWORD ---
+// ✅ --- RESET PASSWORD (NO RULES) ---
 app.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
   try {
@@ -177,7 +166,8 @@ app.post("/reset-password", async (req, res) => {
     if (!user || user.resetToken !== token || Date.now() > user.resetTokenExpiration)
       return res.status(400).json({ message: "Invalid or expired reset token" });
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    // Accept any password, even empty
+    user.password = await bcrypt.hash(newPassword || "", 10);
     user.resetToken = undefined;
     user.resetTokenExpiration = undefined;
     await user.save();

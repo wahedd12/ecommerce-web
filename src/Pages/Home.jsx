@@ -6,7 +6,7 @@ import { products } from "../Data/products";
 import Product from "../Pages/Product";
 import { useUser } from "../Context/userContext";
 import { useCart } from "../Context/cartContext";
-import { Eye, EyeOff } from "lucide-react"; // 👁️ for toggling password visibility
+import { Eye, EyeOff } from "lucide-react"; // 👁️ toggle password visibility
 
 export default function Home() {
   const { user, signup, login, logout } = useUser();
@@ -50,7 +50,7 @@ export default function Home() {
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-24 px-6 text-center rounded-md mb-16">
         <h1 className="text-5xl font-extrabold mb-4">Welcome to Waspomind</h1>
         <p className="text-lg max-w-2xl mx-auto mb-8">
-          Explore books, and all digital publications on culture, religion, psychology and humanity — delivered directly to readers worldwide.
+          Explore books and digital publications on culture, religion, psychology, and humanity — delivered worldwide.
         </p>
         <div className="flex justify-center gap-4 flex-wrap">
           <Link
@@ -99,12 +99,10 @@ export default function Home() {
               <div className="relative">
                 <input
                   type={showSignupPassword ? "text" : "password"}
-                  placeholder="Password (8–12 chars)"
+                  placeholder="Password (any)"
                   value={signupData.password}
                   onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
                   className="border px-4 py-2 rounded w-full"
-                  pattern="(?=.*[A-Z]).{8,12}"
-                  title="Password must be 8–12 characters and include at least 1 uppercase letter"
                   required
                 />
                 <button
@@ -149,7 +147,7 @@ export default function Home() {
               <div className="relative">
                 <input
                   type={showLoginPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder="Password (any)"
                   value={loginData.password}
                   onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                   className="border px-4 py-2 rounded w-full"
@@ -164,7 +162,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* ✅ Forgot password link */}
               <Link
                 to="/forgot-password"
                 onClick={() => setShowLogin(false)}
