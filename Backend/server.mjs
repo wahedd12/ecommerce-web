@@ -13,29 +13,32 @@ app.use(express.json());
 
 // ✅ --- CORS CONFIG ---
 const allowedOrigins = [
-  process.env.CLIENT_URL, // production
-  "https://waspomind.vercel.app",
-  "http://localhost:5173",
+  process.env.CLIENT_URL,             // production URL
+  "https://waspomind.vercel.app",    // your production Vercel site
+  "http://localhost:5173",           // local dev
 ];
 
 const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // allow Postman or mobile apps
-      if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-        return callback(null, true);
-      }
-      console.warn("Blocked by CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-    preflightContinue: false, // ensures OPTIONS requests are handled automatically
-  })
-);
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow Postman or mobile apps
+    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+      return callback(null, true);
+    }
+    console.warn("Blocked by CORS:", origin);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+// Apply CORS to all routes
+app.use(cors(corsOptions));
+
+// Explicitly handle preflight OPTIONS requests
+app.options("*", cors(corsOptions));
 
 // ✅ --- DATABASE ---
 const PORT = process.env.PORT || 5000;
@@ -85,7 +88,9 @@ app.post("/signup", async (req, res) => {
     const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already registered" });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
 
     const hashedPassword = await bcrypt.hash(password || "", 10);
     const user = await User.create({ name, email, password: hashedPassword });
@@ -121,7 +126,8 @@ app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "No user found with that email" });
+    if (!user)
+      return res.status(404).json({ message: "No user found with that email" });
 
     const resetToken = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "15m" });
     user.resetToken = resetToken;
