@@ -26,7 +26,7 @@ if (!CLIENT_URL) {
 const app = express();
 app.use(express.json());
 
-/** Manual CORS header middleware (runs before routes) **/
+// Manual CORS header middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = [
@@ -37,19 +37,19 @@ app.use((req, res, next) => {
   const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
   if (origin && (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin))) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+    res.setHeader("Access‑Control‑Allow‑Origin", origin);
+    res.setHeader("Access‑Control‑Allow‑Credentials", "true");
+    res.setHeader("Access‑Control‑Allow‑Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.setHeader("Access‑Control‑Allow‑Headers", "Content‑Type,Authorization");
   }
-  // If it is an OPTIONS request, respond immediately
+
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
   next();
 });
 
-// Use cors middleware as well (redundant fallback)
+// CORS middleware fallback
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
@@ -59,6 +59,7 @@ const corsOptions = {
       "http://localhost:5173",
     ];
     const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
+
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       callback(null, true);
     } else {
@@ -68,21 +69,21 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
+  allowedHeaders: ["Content‑Type","Authorization"],
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.options("/*splat", cors(corsOptions));  // <- updated wildcard route
 
-// Database
+// Database connect
 const PORT = process.env.PORT || 5000;
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+  .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// Model definitions, helpers, routes (same as your existing code) …
+// Model and routes
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -91,6 +92,7 @@ const userSchema = new mongoose.Schema({
   resetTokenExpiration: Date,
 });
 const User = mongoose.model("User", userSchema);
+
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 
@@ -109,8 +111,7 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// Your signup, login, forgot-password, reset-password, delete-account routes go here exactly as before…
-
+// Example route
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -128,7 +129,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// … (rest of your routes) …
+// ... (other routes as you had them) ...
 
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
