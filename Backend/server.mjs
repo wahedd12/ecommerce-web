@@ -7,7 +7,7 @@ import nodemailer from "nodemailer";
 import cors from "cors";
 import path from "path";
 
-// Load .env
+// Load environment variables from .env
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 console.log("Loaded MONGO_URI:", process.env.MONGO_URI);
 
@@ -26,7 +26,7 @@ if (!CLIENT_URL) {
 const app = express();
 app.use(express.json());
 
-// Manual CORS header middleware
+// Manual CORS‑header middleware (runs early)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = [
@@ -37,15 +37,16 @@ app.use((req, res, next) => {
   const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
   if (origin && (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin))) {
-    res.setHeader("Access‑Control‑Allow‑Origin", origin);
-    res.setHeader("Access‑Control‑Allow‑Credentials", "true");
-    res.setHeader("Access‑Control‑Allow‑Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access‑Control‑Allow‑Headers", "Content‑Type,Authorization");
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
   }
 
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
+
   next();
 });
 
@@ -69,21 +70,23 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content‑Type","Authorization"],
+  allowedHeaders: ["Content-Type","Authorization"],
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
-app.use(cors(corsOptions));
-app.options("/*splat", cors(corsOptions));  // <- updated wildcard route
 
-// Database connect
-const PORT = process.env.PORT || 5000;
+app.use(cors(corsOptions));
+
+// Update wildcard route for Express 5
+app.options("/*splat", cors(corsOptions));
+
+// Connect to database
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// Model and routes
+// Schema & model
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -93,6 +96,7 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model("User", userSchema);
 
+// Helpers
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 
@@ -111,7 +115,7 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// Example route
+// Routes (example)
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -129,10 +133,10 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// ... (other routes as you had them) ...
+// (Add your other routes here: login, forgot-password, reset-password, delete-account, etc.)
 
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
+// Listen on port (use environment PORT if provided)
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));
-
