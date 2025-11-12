@@ -30,20 +30,18 @@ app.use(express.json());
 const allowedOrigins = [
   CLIENT_URL,
   "https://waspomind.vercel.app",
-  "http://localhost:5173",
-  "https://ecommerce-eta-peach-66.vercel.app",
-  "https://ecommerce-git-master-wahedd12s-projects.vercel.app",
-  "https://ecommerce-m0w7u1zyo-wahedd12s-projects.vercel.app"
+  "http://localhost:5173"
 ];
-const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
+// Regex to cover all typical Vercel preview domains for your project
+const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9]+(?:-[a-z0-9]+)*\.wahedd12s-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) {
-      // no origin (like curl/Postman) → allow
-      return callback(null, true);
-    }
-    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+    if (!origin) return callback(null, true);  // allow non‑browser tools
+    if (
+      allowedOrigins.includes(origin) ||
+      vercelPreviewRegex.test(origin)
+    ) {
       return callback(null, true);
     }
     console.warn("Blocked by CORS origin:", origin);
@@ -56,10 +54,10 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// Handle preflight for all routes (including sub‑paths)
+// Use wildcard handler for pre‑flight to cover all paths
 app.options("/*splat", cors(corsOptions));
 
-// Database connection & server start
+// Database connect + server start
 const PORT = process.env.PORT || 5000;
 
 mongoose
@@ -111,10 +109,8 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// … add other routes here (login, forgot‑password, delete account) …
+// Other routes (login, forgot‑password, delete etc.) …
 
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));
