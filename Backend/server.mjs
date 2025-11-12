@@ -7,13 +7,13 @@ import nodemailer from "nodemailer";
 import cors from "cors";
 import path from "path";
 
-// Load environment variables from .env
+// Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 console.log("Loaded MONGO_URI:", process.env.MONGO_URI);
 
 const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
-const CLIENT_URL = process.env.CLIENT_URL;
+const CLIENT_URL = process.env.CLIENT_URL;  // e.g., your Vercel URL
 
 if (!MONGO_URI) {
   console.error("❌ ERROR: MONGO_URI is not defined in environment variables.");
@@ -26,42 +26,23 @@ if (!CLIENT_URL) {
 const app = express();
 app.use(express.json());
 
-// Manual CORS‑header middleware (runs early)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    CLIENT_URL,
-    "https://waspomind.vercel.app",
-    "http://localhost:5173",
-  ];
-  const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
+// Dynamic CORS middleware
+// Dynamic CORS middleware
+const allowedOrigins = [
+  CLIENT_URL,
+  "https://waspomind.vercel.app",
+  "http://localhost:5173"
+];
 
-  if (origin && (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin))) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-  }
+const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
-
-// CORS middleware fallback
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const allowedOrigins = [
-      CLIENT_URL,
-      "https://waspomind.vercel.app",
-      "http://localhost:5173",
-    ];
-    const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
-
-    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+    if (!origin) return callback(null, true);  // allow Postman or mobile without origin
+    if (
+      allowedOrigins.includes(origin) ||
+      vercelPreviewRegex.test(origin)
+    ) {
       callback(null, true);
     } else {
       console.warn("Blocked by CORS origin:", origin);
@@ -71,22 +52,21 @@ const corsOptions = {
   credentials: true,
   methods: ["GET","POST","PUT","DELETE","OPTIONS"],
   allowedHeaders: ["Content-Type","Authorization"],
-  preflightContinue: false,
   optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
+app.options("/*", cors(corsOptions));  // handle pre-flight for all paths
 
-// Update wildcard route for Express 5
-app.options("/*splat", cors(corsOptions));
 
-// Connect to database
+// Connect to DB
+const PORT = process.env.PORT || 5000;
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// Schema & model
+// Define your models & routes
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -96,7 +76,6 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model("User", userSchema);
 
-// Helpers
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 
@@ -115,7 +94,6 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// Routes (example)
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -133,10 +111,8 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// (Add your other routes here: login, forgot-password, reset-password, delete-account, etc.)
+// Add your other routes here (login, forgot-password, reset-password, delete-account)
 
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
-// Listen on port (use environment PORT if provided)
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));
