@@ -26,7 +26,7 @@ if (!CLIENT_URL) {
 const app = express();
 app.use(express.json());
 
-// Dynamic CORS middleware
+// Updated CORS configuration
 const allowedOrigins = [
   CLIENT_URL,
   "https://waspomind.vercel.app",
@@ -40,24 +40,24 @@ const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);  // allow non‑browser/device tools
+    if (!origin) return callback(null, true);  // allow when no origin (e.g., Postman)
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-      callback(null, true);
-    } else {
-      console.warn("Blocked by CORS origin:", origin);
-      callback(new Error("Not allowed by CORS"));
+      return callback(null, true);
     }
+    console.warn("Blocked by CORS origin:", origin);
+    return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content‑Type", "Authorization"],
+  allowedHeaders: ["Content-Type","Authorization"],
   optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
-app.options("/*", cors(corsOptions));  // handle pre‑flight for all routes
+// Fix wildcard route pattern for Express v5
+app.options("/*splat", cors(corsOptions));
 
-// Connect to DB
+// Database connect + port setup
 const PORT = process.env.PORT || 5000;
 
 mongoose
@@ -65,7 +65,7 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// Define your models & routes
+// Define models & helpers
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -93,6 +93,7 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// Routes
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -100,18 +101,17 @@ app.post("/signup", async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ message: "Email already registered" });
     }
-
     const hashedPassword = await bcrypt.hash(password || "", 10);
     const user = await User.create({ name, email, password: hashedPassword });
     const token = generateToken(user);
-    res.json({ token, name: user.name, email: user.email });
+    return res.json({ token, name: user.name, email: user.email });
   } catch (err) {
     console.error("Signup error:", err);
-    res.status(500).json({ message: "Signup failed" });
+    return res.status(500).json({ message: "Signup failed" });
   }
 });
 
-// … (rest of your routes) …
+// Additional routes for login, forgot‑password, reset‑password, delete‑account go here…
 
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
