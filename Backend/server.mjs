@@ -13,7 +13,7 @@ console.log("Loaded MONGO_URI:", process.env.MONGO_URI);
 
 const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
-const CLIENT_URL = process.env.CLIENT_URL;  // e.g., your Vercel URL
+const CLIENT_URL = process.env.CLIENT_URL;
 
 if (!MONGO_URI) {
   console.error("❌ ERROR: MONGO_URI is not defined in environment variables.");
@@ -27,22 +27,21 @@ const app = express();
 app.use(express.json());
 
 // Dynamic CORS middleware
-// Dynamic CORS middleware
 const allowedOrigins = [
   CLIENT_URL,
   "https://waspomind.vercel.app",
-  "http://localhost:5173"
+  "http://localhost:5173",
+  "https://ecommerce-eta-peach-66.vercel.app",
+  "https://ecommerce-git-master-wahedd12s-projects.vercel.app",
+  "https://ecommerce-m0w7u1zyo-wahedd12s-projects.vercel.app"
 ];
 
 const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);  // allow Postman or mobile without origin
-    if (
-      allowedOrigins.includes(origin) ||
-      vercelPreviewRegex.test(origin)
-    ) {
+    if (!origin) return callback(null, true);  // allow non‑browser tools/apps
+    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       callback(null, true);
     } else {
       console.warn("Blocked by CORS origin:", origin);
@@ -56,8 +55,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("/*", cors(corsOptions));  // handle pre-flight for all paths
-
+app.options("/*", cors(corsOptions));  // handle pre‑flight requests globally
 
 // Connect to DB
 const PORT = process.env.PORT || 5000;
@@ -66,7 +64,7 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// Define your models & routes
+// Define model & helpers
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -94,13 +92,14 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// Routes
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const existingUser = await User.findOne({ email });
-    if (existingUser)
+    if (existingUser) {
       return res.status(400).json({ message: "Email already registered" });
-
+    }
     const hashedPassword = await bcrypt.hash(password || "", 10);
     const user = await User.create({ name, email, password: hashedPassword });
     const token = generateToken(user);
@@ -111,7 +110,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// Add your other routes here (login, forgot-password, reset-password, delete-account)
+// (Add your other routes: login, forgot‑password, reset‑password, delete‑account)
 
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
