@@ -26,7 +26,7 @@ if (!CLIENT_URL) {
 const app = express();
 app.use(express.json());
 
-// Updated CORS configuration
+// CORS setup
 const allowedOrigins = [
   CLIENT_URL,
   "https://waspomind.vercel.app",
@@ -35,12 +35,14 @@ const allowedOrigins = [
   "https://ecommerce-git-master-wahedd12s-projects.vercel.app",
   "https://ecommerce-m0w7u1zyo-wahedd12s-projects.vercel.app"
 ];
-
 const vercelPreviewRegex = /^https:\/\/ecommerce-.*\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);  // allow when no origin (e.g., Postman)
+    if (!origin) {
+      // no origin (like curl/Postman) → allow
+      return callback(null, true);
+    }
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
     }
@@ -48,16 +50,16 @@ const corsOptions = {
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
   allowedHeaders: ["Content-Type","Authorization"],
   optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
-// Fix wildcard route pattern for Express v5
+// Handle preflight for all routes (including sub‑paths)
 app.options("/*splat", cors(corsOptions));
 
-// Database connect + port setup
+// Database connection & server start
 const PORT = process.env.PORT || 5000;
 
 mongoose
@@ -65,7 +67,6 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// Define models & helpers
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -93,7 +94,6 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// Routes
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -111,8 +111,10 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// Additional routes for login, forgot‑password, reset‑password, delete‑account go here…
+// … add other routes here (login, forgot‑password, delete account) …
 
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
-app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
