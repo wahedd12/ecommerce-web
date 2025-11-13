@@ -35,17 +35,21 @@ app.use((req, res, next) => {
 const allowedOrigins = [
   CLIENT_URL,
   "https://waspomind.vercel.app",
-  "https://ecommerce-eta-peach-66.vercel.app",
-  "https://ecommerce-82yq1kv7a-wahedd12s-projects.vercel.app",
-  "http://localhost:5173",
+  "http://localhost:5173"
 ];
+// regex to capture any Vercel preview domain of your project
 const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9]+(?:-[a-z0-9]+)*\.wahedd12s-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // allow non-origin requests (e.g., Postman)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+    if (!origin) {
+      // no origin header (e.g., server‑to‑server or Postman) → allow
+      return callback(null, true);
+    }
+    if (
+      allowedOrigins.includes(origin) ||
+      vercelPreviewRegex.test(origin)
+    ) {
       return callback(null, true);
     }
     console.warn("🚫 Blocked by CORS origin:", origin);
@@ -53,15 +57,15 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
+  allowedHeaders: ["Content‑Type", "Authorization"],
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-// Handle pre-flight requests for all routes
+// Use wildcard handler for pre‑flight to cover all routes (Express v5 syntax)
 app.options("/*splat", cors(corsOptions));
 
-// Connect to database and start server
+// Database connect + server start
 const PORT = process.env.PORT || 5000;
 
 mongoose
