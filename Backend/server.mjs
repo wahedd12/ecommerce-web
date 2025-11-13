@@ -37,16 +37,19 @@ const allowedOrigins = [
   "https://waspomind.vercel.app",
   "http://localhost:5173"
 ];
-// Regex to capture any Vercel preview domain of your project
+// Universal regex to match all your Vercel preview domains
 const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9]+(?:-[a-z0-9]+)*-wahedd12s-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) {
-      // no origin header (e.g., server‑to‑server or Postman) → allow
+      // allow non-browser requests
       return callback(null, true);
     }
-    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+    if (
+      allowedOrigins.includes(origin) ||
+      vercelPreviewRegex.test(origin)
+    ) {
       return callback(null, true);
     }
     console.warn("🚫 Blocked by CORS origin:", origin);
@@ -54,15 +57,15 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
-  optionsSuccessStatus: 204,
+  allowedHeaders: ["Content‑Type","Authorization"],
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
 // Use wildcard handler for pre‑flight to cover all routes (Express v5 syntax)
 app.options("/*splat", cors(corsOptions));
 
-// Database connect + server start
+// Connect to DB + start server
 const PORT = process.env.PORT || 5000;
 
 mongoose
