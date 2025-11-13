@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
 
-// Load environment variables
+// Load env
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 console.log("Loaded MONGO_URI:", process.env.MONGO_URI);
 
@@ -25,7 +25,7 @@ if (!CLIENT_URL) {
 const app = express();
 app.use(express.json());
 
-// Logging middleware — logs origin of each request
+// Logging origin
 app.use((req, res, next) => {
   console.log("🌐 Incoming origin:", req.headers.origin);
   next();
@@ -37,19 +37,16 @@ const allowedOrigins = [
   "https://waspomind.vercel.app",
   "http://localhost:5173"
 ];
-// Universal regex to match all your Vercel preview domains
+// Regex for all your Vercel preview domains
 const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9]+(?:-[a-z0-9]+)*-wahedd12s-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) {
-      // allow non-browser requests
+      // allow non‑browser (e.g., Postman)
       return callback(null, true);
     }
-    if (
-      allowedOrigins.includes(origin) ||
-      vercelPreviewRegex.test(origin)
-    ) {
+    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
     }
     console.warn("🚫 Blocked by CORS origin:", origin);
@@ -57,15 +54,15 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content‑Type","Authorization"],
-  optionsSuccessStatus: 204
+  allowedHeaders: ["Content-Type","Authorization"],
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-// Use wildcard handler for pre‑flight to cover all routes (Express v5 syntax)
+// Wildcard handler for pre‑flight (Express v5 safe)
 app.options("/*splat", cors(corsOptions));
 
-// Connect to DB + start server
+// Database connect + server start
 const PORT = process.env.PORT || 5000;
 
 mongoose
