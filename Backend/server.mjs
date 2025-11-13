@@ -52,7 +52,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // Handle preflight for all routes
+app.options(/.*/, cors(corsOptions));
+// Handle preflight for all routes
 
 // Database connection
 const PORT = process.env.PORT || 5000;
