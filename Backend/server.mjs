@@ -37,8 +37,8 @@ const allowedOrigins = [
   "https://waspomind.vercel.app",
   "http://localhost:5173"
 ];
-// regex to capture any Vercel preview domain of your project
-const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9]+(?:-[a-z0-9]+)*\.wahedd12s-projects\.vercel\.app$/;
+// Regex to capture any Vercel preview domain of your project
+const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9]+(?:-[a-z0-9]+)*-wahedd12s-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -46,18 +46,15 @@ const corsOptions = {
       // no origin header (e.g., server‑to‑server or Postman) → allow
       return callback(null, true);
     }
-    if (
-      allowedOrigins.includes(origin) ||
-      vercelPreviewRegex.test(origin)
-    ) {
+    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
     }
     console.warn("🚫 Blocked by CORS origin:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content‑Type", "Authorization"],
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
   optionsSuccessStatus: 204,
 };
 
