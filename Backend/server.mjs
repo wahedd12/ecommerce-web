@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import path from "path";
+import cors from "cors";
 
 // ------------------------------
 // Load environment variables
@@ -25,33 +26,33 @@ const app = express();
 app.use(express.json());
 
 // ------------------------------
-// Render-compatible CORS middleware
+// CORS setup (Render-compatible)
 // ------------------------------
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    CLIENT_URL,
-    "https://waspomind.vercel.app",
-    "http://localhost:5173",
-  ];
+const allowedOrigins = [
+  CLIENT_URL,
+  "https://waspomind.vercel.app",
+  "http://localhost:5173",
+];
 
-  // Regex to match all Vercel preview deployments
-  const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
+// Regex to match all Vercel preview URLs
+const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
 
-  if (!origin || allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin || "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-  }
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow Postman or curl
+    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+      return callback(null, true);
+    }
+    console.warn("🚫 Blocked by CORS:", origin);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
-  // Handle preflight requests
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
+// Preflight handler for Render
+app.options("*", cors());
 
 // ------------------------------
 // MongoDB connection
