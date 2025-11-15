@@ -6,47 +6,51 @@ import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
 
-// Load env
+// ------------------------------
+// Load environment variables
+// ------------------------------
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
-console.log("Loaded MONGO_URI:", process.env.MONGO_URI);
-
 const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
-const CLIENT_URL = process.env.CLIENT_URL;
+const CLIENT_URL = process.env.CLIENT_URL || "https://waspomind.vercel.app";
 
 if (!MONGO_URI) {
   console.error("❌ ERROR: MONGO_URI is not defined in environment variables.");
   process.exit(1);
 }
-if (!CLIENT_URL) {
-  console.warn("⚠️ WARNING: CLIENT_URL is not defined. CORS may restrict access.");
-}
 
+// ------------------------------
+// Express app setup
+// ------------------------------
 const app = express();
 app.use(express.json());
 
-// Log origin
+// ------------------------------
+// Logging incoming origin (for debugging CORS)
+// ------------------------------
 app.use((req, res, next) => {
   console.log("🌐 Incoming origin:", req.headers.origin);
   next();
 });
 
 // ------------------------------
-// ✔ FIXED CORS CONFIG
+// Robust CORS setup
 // ------------------------------
 const allowedOrigins = [
   CLIENT_URL,
   "https://waspomind.vercel.app",
-  "https://ecommerce-mxdhpozp9-wahedd12s-projects.vercel.app",
-  "http://localhost:5173"
+  "http://localhost:5173",
 ];
 
-// Regex for ALL Vercel preview builds
-const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9]+(?:-[a-z0-9]+)*-wahedd12s-projects\.vercel\.app$/;
+// Regex to match all Vercel preview deployments
+const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // Allow Postman/mobile apps
+    if (!origin) {
+      // Allow Postman, curl, mobile apps
+      return callback(null, true);
+    }
 
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
@@ -61,20 +65,21 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
+// Apply CORS middleware globally
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // handle preflight OPTIONS
 
-// ✔ Fixed preflight handler
-app.options("*", cors(corsOptions));
 // ------------------------------
-
-// Database connect + server start
-const PORT = process.env.PORT || 5000;
-
+// MongoDB connection
+// ------------------------------
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => console.error("❌ MongoDB connection error:", err));
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
+// ------------------------------
+// User schema and model
+// ------------------------------
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -82,11 +87,18 @@ const userSchema = new mongoose.Schema({
   resetToken: String,
   resetTokenExpiration: Date,
 });
+
 const User = mongoose.model("User", userSchema);
 
+// ------------------------------
+// JWT helper
+// ------------------------------
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 
+// ------------------------------
+// Auth middleware
+// ------------------------------
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -104,15 +116,20 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// Signup route
+// ------------------------------
+// Routes
+// ------------------------------
+
+// Root
+app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
+
+// Signup
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
+    if (existingUser) return res.status(400).json({ message: "Email already registered" });
 
     const hashedPassword = await bcrypt.hash(password || "", 10);
     const user = await User.create({ name, email, password: hashedPassword });
@@ -126,10 +143,29 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// Root route
-app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
+// Login (example)
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+
+    const token = generateToken(user);
+    return res.json({ token, name: user.name, email: user.email });
+  } catch (err) {
+    console.error("Login error:", err);
+    return res.status(500).json({ message: "Login failed" });
+  }
+});
+
+// ------------------------------
 // Start server
+// ------------------------------
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
