@@ -6,27 +6,22 @@ import dotenv from "dotenv";
 import path from "path";
 import cors from "cors";
 
-// ------------------------------
-// Load environment variables
-// ------------------------------
+// Load env
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 const CLIENT_URL = process.env.CLIENT_URL || "https://waspomind.vercel.app";
 
 if (!MONGO_URI) {
-  console.error("❌ ERROR: MONGO_URI is not defined in environment variables.");
+  console.error("❌ ERROR: MONGO_URI is not defined.");
   process.exit(1);
 }
 
-// ------------------------------
-// Express app setup
-// ------------------------------
 const app = express();
 app.use(express.json());
 
 // ------------------------------
-// CORS setup (Render-compatible)
+// CORS
 // ------------------------------
 const allowedOrigins = [
   CLIENT_URL,
@@ -34,12 +29,12 @@ const allowedOrigins = [
   "http://localhost:5173",
 ];
 
-// Regex to match all Vercel preview URLs
+// Regex for Vercel preview builds
 const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow Postman or curl
+    if (!origin) return callback(null, true); // Postman or curl
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
     }
@@ -51,11 +46,8 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// Preflight handler for Render
-app.options("*", cors());
-
 // ------------------------------
-// MongoDB connection
+// MongoDB
 // ------------------------------
 mongoose
   .connect(MONGO_URI)
@@ -63,7 +55,7 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ------------------------------
-// User schema and model
+// User schema & model
 // ------------------------------
 const userSchema = new mongoose.Schema({
   name: String,
@@ -72,7 +64,6 @@ const userSchema = new mongoose.Schema({
   resetToken: String,
   resetTokenExpiration: Date,
 });
-
 const User = mongoose.model("User", userSchema);
 
 // ------------------------------
@@ -80,26 +71,6 @@ const User = mongoose.model("User", userSchema);
 // ------------------------------
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
-
-// ------------------------------
-// Auth middleware
-// ------------------------------
-const authMiddleware = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch {
-    return res.status(403).json({ message: "Invalid or expired token" });
-  }
-};
 
 // ------------------------------
 // Routes
@@ -112,7 +83,6 @@ app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: "Email already registered" });
 
@@ -120,7 +90,6 @@ app.post("/signup", async (req, res) => {
     const user = await User.create({ name, email, password: hashedPassword });
 
     const token = generateToken(user);
-
     return res.json({ token, name: user.name, email: user.email });
   } catch (err) {
     console.error("Signup error:", err);
@@ -132,7 +101,6 @@ app.post("/signup", async (req, res) => {
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
