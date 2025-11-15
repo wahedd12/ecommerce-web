@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
-import { API_URL } from "../Config/api";
-
 
 const UserContext = createContext();
 
@@ -19,10 +17,18 @@ export function UserProvider({ children }) {
     }
   }, [token, user]);
 
+  // Base URL of your backend
+  const API_URL = "https://waspomind-api.onrender.com";
+
   // 🔹 SIGNUP
   const signup = async (name, email, password) => {
     try {
-      const res = await axios.post(`${API_URL}/signup`, { name, email, password });
+      const res = await axios.post(
+        `${API_URL}/signup`,
+        { name, email, password },
+        { withCredentials: true } // optional if you want cookies later
+      );
+
       setUser({ name: res.data.name, email: res.data.email });
       setToken(res.data.token);
     } catch (err) {
@@ -34,7 +40,11 @@ export function UserProvider({ children }) {
   // 🔹 LOGIN
   const login = async (email, password) => {
     try {
-      const res = await axios.post(`${API_URL}/login`, { email, password });
+      const res = await axios.post(
+        `${API_URL}/login`,
+        { email, password },
+        { withCredentials: true }
+      );
       setUser({ name: res.data.name, email: res.data.email });
       setToken(res.data.token);
     } catch (err) {
@@ -43,7 +53,15 @@ export function UserProvider({ children }) {
     }
   };
 
-  // 🔹 FORGOT PASSWORD
+  // 🔹 LOGOUT
+  const logout = () => {
+    setUser(null);
+    setToken("");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  };
+
+  // 🔹 OPTIONAL: Forgot/Reset/Delete account functions remain unchanged
   const forgotPassword = async (email) => {
     try {
       const res = await axios.post(`${API_URL}/forgot-password`, { email });
@@ -54,7 +72,6 @@ export function UserProvider({ children }) {
     }
   };
 
-  // 🔹 RESET PASSWORD
   const resetPassword = async (token, newPassword) => {
     try {
       const res = await axios.post(`${API_URL}/reset-password`, { token, newPassword });
@@ -65,11 +82,8 @@ export function UserProvider({ children }) {
     }
   };
 
-  // 🔹 DELETE ACCOUNT
   const deleteAccount = async () => {
-    if (!window.confirm("Are you sure you want to permanently delete your account? This cannot be undone.")) {
-      return;
-    }
+    if (!window.confirm("Are you sure you want to permanently delete your account?")) return;
 
     try {
       await axios.delete(`${API_URL}/delete-account`, {
@@ -81,14 +95,6 @@ export function UserProvider({ children }) {
       alert(err.response?.data?.message || "Account deletion failed.");
       throw err;
     }
-  };
-
-  // 🔹 LOGOUT
-  const logout = () => {
-    setUser(null);
-    setToken("");
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
   };
 
   return (
