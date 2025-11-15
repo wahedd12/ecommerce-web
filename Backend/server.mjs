@@ -6,8 +6,11 @@ import dotenv from "dotenv";
 import path from "path";
 import cors from "cors";
 
-// Load env
+// ------------------------------
+// Load environment variables
+// ------------------------------
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
+
 const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 const CLIENT_URL = process.env.CLIENT_URL || "https://waspomind.vercel.app";
@@ -21,7 +24,7 @@ const app = express();
 app.use(express.json());
 
 // ------------------------------
-// CORS
+// CORS configuration
 // ------------------------------
 const allowedOrigins = [
   CLIENT_URL,
@@ -29,25 +32,28 @@ const allowedOrigins = [
   "http://localhost:5173",
 ];
 
-// Regex for Vercel preview builds
+// Regex for all Vercel preview builds
 const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // Postman or curl
-    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-      return callback(null, true);
-    }
+    if (!origin) return callback(null, true); // allow Postman / curl
+    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) return callback(null, true);
     console.warn("🚫 Blocked by CORS:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+
+// Explicit preflight handler for all routes
+app.options("*", cors(corsOptions));
 
 // ------------------------------
-// MongoDB
+// Connect to MongoDB
 // ------------------------------
 mongoose
   .connect(MONGO_URI)
@@ -55,7 +61,7 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ------------------------------
-// User schema & model
+// User schema and model
 // ------------------------------
 const userSchema = new mongoose.Schema({
   name: String,
