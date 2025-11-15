@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import cors from "cors";
 import path from "path";
 
 // ------------------------------
@@ -26,47 +25,33 @@ const app = express();
 app.use(express.json());
 
 // ------------------------------
-// Logging incoming origin
+// Render-compatible CORS middleware
 // ------------------------------
 app.use((req, res, next) => {
-  console.log("🌐 Incoming origin:", req.headers.origin);
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    CLIENT_URL,
+    "https://waspomind.vercel.app",
+    "http://localhost:5173",
+  ];
+
+  // Regex to match all Vercel preview deployments
+  const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
+
+  if (!origin || allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
   next();
 });
-
-// ------------------------------
-// Robust CORS setup
-// ------------------------------
-const allowedOrigins = [
-  CLIENT_URL,
-  "https://waspomind.vercel.app",
-  "http://localhost:5173",
-];
-
-// Regex to match all Vercel preview deployments
-const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
-
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow Postman/curl/mobile apps
-
-    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
-      return callback(null, true);
-    }
-
-    console.warn("🚫 Blocked by CORS:", origin);
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 204,
-};
-
-// ------------------------------
-// Apply CORS middleware globally
-// ------------------------------
-app.use(cors(corsOptions)); // handles preflight automatically
-// 🔹 No app.options('*') needed for your router version
 
 // ------------------------------
 // MongoDB connection
