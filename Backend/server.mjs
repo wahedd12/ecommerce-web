@@ -1,3 +1,4 @@
+// server.mjs
 import express from "express";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
@@ -6,9 +7,7 @@ import dotenv from "dotenv";
 import path from "path";
 import cors from "cors";
 
-// ------------------------------
 // Load environment variables
-// ------------------------------
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 
 const MONGO_URI = process.env.MONGO_URI;
@@ -24,7 +23,7 @@ const app = express();
 app.use(express.json());
 
 // ------------------------------
-// CORS configuration
+// CORS
 // ------------------------------
 const allowedOrigins = [
   CLIENT_URL,
@@ -32,28 +31,25 @@ const allowedOrigins = [
   "http://localhost:5173",
 ];
 
-// Regex for all Vercel preview builds
+// Regex to allow Vercel preview builds
 const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
 
-const corsOptions = {
+app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow Postman / curl
-    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) return callback(null, true);
+    if (!origin) return callback(null, true); // Postman / curl requests
+    if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
+      return callback(null, true);
+    }
     console.warn("🚫 Blocked by CORS:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
-
-app.use(cors(corsOptions));
-
-// Explicit preflight handler for all routes
-app.options("*", cors(corsOptions));
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"]
+}));
 
 // ------------------------------
-// Connect to MongoDB
+// MongoDB
 // ------------------------------
 mongoose
   .connect(MONGO_URI)
@@ -61,7 +57,7 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ------------------------------
-// User schema and model
+// User schema & model
 // ------------------------------
 const userSchema = new mongoose.Schema({
   name: String,
@@ -89,6 +85,7 @@ app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: "Email already registered" });
 
