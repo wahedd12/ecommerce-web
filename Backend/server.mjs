@@ -26,7 +26,7 @@ const app = express();
 app.use(express.json());
 
 // ------------------------------
-// Logging incoming origin (for debugging CORS)
+// Logging incoming origin
 // ------------------------------
 app.use((req, res, next) => {
   console.log("🌐 Incoming origin:", req.headers.origin);
@@ -47,10 +47,7 @@ const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) {
-      // Allow Postman, curl, mobile apps
-      return callback(null, true);
-    }
+    if (!origin) return callback(null, true); // allow Postman/curl/mobile apps
 
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
@@ -65,9 +62,11 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
+// ------------------------------
 // Apply CORS middleware globally
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // handle preflight OPTIONS
+// ------------------------------
+app.use(cors(corsOptions)); // handles preflight automatically
+// 🔹 No app.options('*') needed for your router version
 
 // ------------------------------
 // MongoDB connection
@@ -143,7 +142,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// Login (example)
+// Login
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
