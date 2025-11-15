@@ -25,42 +25,47 @@ if (!CLIENT_URL) {
 const app = express();
 app.use(express.json());
 
-// Logging origin
+// Log origin
 app.use((req, res, next) => {
   console.log("🌐 Incoming origin:", req.headers.origin);
   next();
 });
 
-// CORS setup
+// ------------------------------
+// ✔ FIXED CORS CONFIG
+// ------------------------------
 const allowedOrigins = [
   CLIENT_URL,
   "https://waspomind.vercel.app",
+  "https://ecommerce-mxdhpozp9-wahedd12s-projects.vercel.app",
   "http://localhost:5173"
 ];
-// Regex for all your Vercel preview domains
+
+// Regex for ALL Vercel preview builds
 const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9]+(?:-[a-z0-9]+)*-wahedd12s-projects\.vercel\.app$/;
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) {
-      // allow non‑browser (e.g., Postman)
-      return callback(null, true);
-    }
+    if (!origin) return callback(null, true); // Allow Postman/mobile apps
+
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
     }
-    console.warn("🚫 Blocked by CORS origin:", origin);
+
+    console.warn("🚫 Blocked by CORS:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-// Wildcard handler for pre‑flight (Express v5 safe)
-app.options("/*splat", cors(corsOptions));
+
+// ✔ Fixed preflight handler
+app.options("*", cors(corsOptions));
+// ------------------------------
 
 // Database connect + server start
 const PORT = process.env.PORT || 5000;
@@ -87,7 +92,9 @@ const authMiddleware = async (req, res, next) => {
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Unauthorized" });
   }
+
   const token = authHeader.split(" ")[1];
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
@@ -97,16 +104,21 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// Signup route
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "Email already registered" });
     }
+
     const hashedPassword = await bcrypt.hash(password || "", 10);
     const user = await User.create({ name, email, password: hashedPassword });
+
     const token = generateToken(user);
+
     return res.json({ token, name: user.name, email: user.email });
   } catch (err) {
     console.error("Signup error:", err);
@@ -114,8 +126,10 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+// Root route
 app.get("/", (req, res) => res.send("Waspomind backend is running ✅"));
 
+// Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
