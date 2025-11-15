@@ -17,8 +17,8 @@ export function UserProvider({ children }) {
     }
   }, [token, user]);
 
-  // Base URL of your backend
-  const API_URL = "https://waspomind-api.onrender.com";
+  // ✅ Use environment variable for backend URL
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // 🔹 SIGNUP
   const signup = async (name, email, password) => {
