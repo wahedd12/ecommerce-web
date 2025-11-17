@@ -7,7 +7,9 @@ import dotenv from "dotenv";
 import path from "path";
 import cors from "cors";
 
+// ------------------------------
 // Load environment variables
+// ------------------------------
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 
 const MONGO_URI = process.env.MONGO_URI;
@@ -23,20 +25,20 @@ const app = express();
 app.use(express.json());
 
 // ------------------------------
-// CORS
+// CORS Configuration
 // ------------------------------
 const allowedOrigins = [
-  CLIENT_URL,
+  CLIENT_URL, // production frontend
   "https://waspomind.vercel.app",
-  "http://localhost:5173",
+  "http://localhost:5173", // local dev
 ];
 
-// Regex to allow Vercel preview builds
-const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
+// Regex to allow any Vercel preview deployments for this project
+const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // Postman / curl requests
+    if (!origin) return callback(null, true); // Postman / curl
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
     }
@@ -44,12 +46,12 @@ app.use(cors({
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 // ------------------------------
-// MongoDB
+// MongoDB Connection
 // ------------------------------
 mongoose
   .connect(MONGO_URI)
@@ -57,7 +59,7 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ------------------------------
-// User schema & model
+// User Schema & Model
 // ------------------------------
 const userSchema = new mongoose.Schema({
   name: String,
@@ -69,7 +71,7 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ------------------------------
-// JWT helper
+// JWT Helper
 // ------------------------------
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
@@ -119,7 +121,7 @@ app.post("/login", async (req, res) => {
 });
 
 // ------------------------------
-// Start server
+// Start Server
 // ------------------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {
