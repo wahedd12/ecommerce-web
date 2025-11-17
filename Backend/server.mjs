@@ -28,17 +28,16 @@ app.use(express.json());
 // CORS Configuration
 // ------------------------------
 const allowedOrigins = [
-  CLIENT_URL, // production frontend
+  CLIENT_URL,
   "https://waspomind.vercel.app",
-  "http://localhost:5173", // local dev
+  "http://localhost:5173",
 ];
 
-// Regex to allow any Vercel preview deployments for this project
 const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // Postman / curl
+    if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
     }
@@ -71,10 +70,38 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 // ------------------------------
+// Cart Schema & Model
+// ------------------------------
+const cartSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  items: [
+    {
+      productId: String,
+      quantity: Number,
+      price: Number
+    }
+  ]
+});
+const Cart = mongoose.model("Cart", cartSchema);
+
+// ------------------------------
 // JWT Helper
 // ------------------------------
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+
+const authenticate = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.id;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
 
 // ------------------------------
 // Routes
@@ -117,6 +144,61 @@ app.post("/login", async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
     return res.status(500).json({ message: "Login failed" });
+  }
+});
+
+// ------------------------------
+// Cart Routes (per-user)
+// ------------------------------
+
+// Get user's cart
+app.get("/cart", authenticate, async (req, res) => {
+  try {
+    const cart = await Cart.findOne({ userId: req.userId }) || { items: [] };
+    res.json(cart.items);
+  } catch (err) {
+    console.error("Fetch cart error:", err);
+    res.status(500).json({ message: "Failed to fetch cart" });
+  }
+});
+
+// Add/update item in cart
+app.post("/cart", authenticate, async (req, res) => {
+  const { productId, quantity, price = 0 } = req.body;
+  try {
+    let cart = await Cart.findOne({ userId: req.userId });
+    if (!cart) {
+      cart = await Cart.create({ userId: req.userId, items: [] });
+    }
+
+    const index = cart.items.findIndex(item => item.productId === productId);
+    if (index >= 0) {
+      cart.items[index].quantity += quantity;
+    } else {
+      cart.items.push({ productId, quantity, price });
+    }
+
+    await cart.save();
+    res.json(cart.items);
+  } catch (err) {
+    console.error("Add to cart error:", err);
+    res.status(500).json({ message: "Failed to update cart" });
+  }
+});
+
+// Remove item from cart
+app.delete("/cart/:productId", authenticate, async (req, res) => {
+  const { productId } = req.params;
+  try {
+    const cart = await Cart.findOne({ userId: req.userId });
+    if (!cart) return res.json([]);
+
+    cart.items = cart.items.filter(item => item.productId !== productId);
+    await cart.save();
+    res.json(cart.items);
+  } catch (err) {
+    console.error("Remove cart item error:", err);
+    res.status(500).json({ message: "Failed to remove item" });
   }
 });
 
