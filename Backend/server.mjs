@@ -28,16 +28,17 @@ app.use(express.json());
 // CORS Configuration
 // ------------------------------
 const allowedOrigins = [
-  CLIENT_URL,
+  CLIENT_URL, // production frontend
   "https://waspomind.vercel.app",
-  "http://localhost:5173",
+  "http://localhost:5173", // local dev
 ];
 
-const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+-[a-z0-9-]+-wahedd12s-projects\.vercel\.app$/;
+// Regex to allow any Vercel preview deployments
+const vercelPreviewRegex = /^https:\/\/ecommerce-[a-z0-9-]+(-[a-z0-9-]+)*-wahedd12s-projects\.vercel\.app$/;
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(null, true); // Postman / curl / server-side
     if (allowedOrigins.includes(origin) || vercelPreviewRegex.test(origin)) {
       return callback(null, true);
     }
@@ -78,9 +79,9 @@ const cartSchema = new mongoose.Schema({
     {
       productId: String,
       quantity: Number,
-      price: Number
-    }
-  ]
+      price: Number,
+    },
+  ],
 });
 const Cart = mongoose.model("Cart", cartSchema);
 
@@ -90,16 +91,18 @@ const Cart = mongoose.model("Cart", cartSchema);
 const generateToken = (user) =>
   jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 
-const authenticate = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ message: "Unauthorized" });
+// Middleware to protect routes
+const authenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: "Unauthorized" });
 
+  const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.userId = decoded.id;
+    req.user = decoded;
     next();
   } catch (err) {
-    res.status(401).json({ message: "Invalid token" });
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 
@@ -148,57 +151,58 @@ app.post("/login", async (req, res) => {
 });
 
 // ------------------------------
-// Cart Routes (per-user)
+// Cart Routes
 // ------------------------------
 
-// Get user's cart
+// Get cart
 app.get("/cart", authenticate, async (req, res) => {
   try {
-    const cart = await Cart.findOne({ userId: req.userId }) || { items: [] };
-    res.json(cart.items);
+    let cart = await Cart.findOne({ userId: req.user.id });
+    if (!cart) cart = await Cart.create({ userId: req.user.id, items: [] });
+    return res.json(cart.items);
   } catch (err) {
     console.error("Fetch cart error:", err);
-    res.status(500).json({ message: "Failed to fetch cart" });
+    return res.status(500).json({ message: "Failed to fetch cart" });
   }
 });
 
-// Add/update item in cart
+// Add / update item
 app.post("/cart", authenticate, async (req, res) => {
-  const { productId, quantity, price = 0 } = req.body;
   try {
-    let cart = await Cart.findOne({ userId: req.userId });
-    if (!cart) {
-      cart = await Cart.create({ userId: req.userId, items: [] });
-    }
+    const { productId, quantity, price } = req.body;
+    if (!productId || !quantity) return res.status(400).json({ message: "Invalid data" });
 
-    const index = cart.items.findIndex(item => item.productId === productId);
-    if (index >= 0) {
-      cart.items[index].quantity += quantity;
+    let cart = await Cart.findOne({ userId: req.user.id });
+    if (!cart) cart = await Cart.create({ userId: req.user.id, items: [] });
+
+    const existingItem = cart.items.find(item => item.productId === productId);
+    if (existingItem) {
+      existingItem.quantity += quantity;
     } else {
       cart.items.push({ productId, quantity, price });
     }
 
     await cart.save();
-    res.json(cart.items);
+    return res.json(cart.items);
   } catch (err) {
-    console.error("Add to cart error:", err);
-    res.status(500).json({ message: "Failed to update cart" });
+    console.error("Cart update error:", err);
+    return res.status(500).json({ message: "Cart update failed" });
   }
 });
 
-// Remove item from cart
+// Remove item
 app.delete("/cart/:productId", authenticate, async (req, res) => {
-  const { productId } = req.params;
   try {
-    const cart = await Cart.findOne({ userId: req.userId });
-    if (!cart) return res.json([]);
+    const { productId } = req.params;
+    let cart = await Cart.findOne({ userId: req.user.id });
+    if (!cart) return res.status(404).json({ message: "Cart not found" });
 
     cart.items = cart.items.filter(item => item.productId !== productId);
     await cart.save();
-    res.json(cart.items);
+    return res.json(cart.items);
   } catch (err) {
-    console.error("Remove cart item error:", err);
-    res.status(500).json({ message: "Failed to remove item" });
+    console.error("Cart delete error:", err);
+    return res.status(500).json({ message: "Cart removal failed" });
   }
 });
 
