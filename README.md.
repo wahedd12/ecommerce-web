@@ -1,5 +1,3 @@
-# KootulangCulture
+Ecommerce Web
 
-A Yoruba heritage quiz app built with React and Firebase. Users can register, take quizzes, and track their results.
-
-**Live Demo:** [Vercel Link](https://vercel.com/wahedd12s-projects/kootulangculture/8TAQQJAJH2A599qg14VNYXuECcgk)
+Ecommerce Web is a full-stack online shopping platform that allows users to browse products, add items to their cart, and complete secure payments. Built with a modern frontend and a backend API deployed on Render, it integrates Paystack for seamless payment processing.
