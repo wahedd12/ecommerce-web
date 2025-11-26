@@ -7,6 +7,8 @@ import { useUser } from "../Context/userContext";
 export default function Navbar({ user, onShowSignup, onShowLogin, onLogout }) {
   const { token, logout } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef(null);
   const dropdownRef = useRef(null);
 
   const handleDeleteAccount = async () => {
@@ -27,11 +29,14 @@ export default function Navbar({ user, onShowSignup, onShowLogin, onLogout }) {
     }
   };
 
-  // ✅ Close dropdown when clicking outside
+  // Close dropdown or mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+        setMobileMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -39,7 +44,7 @@ export default function Navbar({ user, onShowSignup, onShowLogin, onLogout }) {
   }, []);
 
   return (
-    <nav className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center shadow-md">
+    <nav className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center shadow-md relative">
       {/* Logo */}
       <div className="text-2xl font-bold">
         <Link to="/" className="hover:text-yellow-300 transition">
@@ -47,33 +52,24 @@ export default function Navbar({ user, onShowSignup, onShowLogin, onLogout }) {
         </Link>
       </div>
 
-      {/* Menu Links */}
+      {/* Desktop Menu Links */}
       <div className="hidden md:flex items-center gap-6">
         <Link to="/" className="hover:text-yellow-300 transition font-medium">
           Home
         </Link>
-        <Link
-          to="/products"
-          className="hover:text-yellow-300 transition font-medium"
-        >
+        <Link to="/products" className="hover:text-yellow-300 transition font-medium">
           Products
         </Link>
-        <Link
-          to="/about"
-          className="hover:text-yellow-300 transition font-medium"
-        >
+        <Link to="/about" className="hover:text-yellow-300 transition font-medium">
           About
         </Link>
-        <Link
-          to="/contact"
-          className="hover:text-yellow-300 transition font-medium"
-        >
+        <Link to="/contact" className="hover:text-yellow-300 transition font-medium">
           Contact
         </Link>
       </div>
 
-      {/* Auth Buttons */}
-      <div className="flex items-center gap-4 relative" ref={dropdownRef}>
+      {/* Desktop Auth Buttons */}
+      <div className="hidden md:flex items-center gap-4 relative" ref={dropdownRef}>
         {user ? (
           <>
             <button
@@ -118,8 +114,101 @@ export default function Navbar({ user, onShowSignup, onShowLogin, onLogout }) {
         )}
       </div>
 
-      {/* Mobile Menu Placeholder */}
-      {/* You can add a hamburger menu for small screens here */}
+      {/* Mobile Hamburger Button */}
+      <button
+        className="md:hidden text-white focus:outline-none"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {mobileMenuOpen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Mobile Menu */}
+      <div
+        ref={mobileMenuRef}
+        className={`md:hidden absolute top-full left-0 w-full bg-blue-600 flex flex-col gap-2 px-4 py-4 z-40 overflow-y-auto transition-[max-height,opacity] duration-300 ease-in-out ${
+          mobileMenuOpen ? "max-h-[80vh] opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        {/* Links */}
+        <Link to="/" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-yellow-300 transition">
+          Home
+        </Link>
+        <Link
+          to="/products"
+          onClick={() => setMobileMenuOpen(false)}
+          className="py-2 hover:text-yellow-300 transition"
+        >
+          Products
+        </Link>
+        <Link
+          to="/about"
+          onClick={() => setMobileMenuOpen(false)}
+          className="py-2 hover:text-yellow-300 transition"
+        >
+          About
+        </Link>
+        <Link
+          to="/contact"
+          onClick={() => setMobileMenuOpen(false)}
+          className="py-2 hover:text-yellow-300 transition"
+        >
+          Contact
+        </Link>
+
+        {/* Auth Buttons */}
+        <div className="mt-2 border-t border-blue-400 pt-2 flex flex-col gap-2">
+          {user ? (
+            <>
+              <span className="py-2 text-white font-semibold">Hi, {user.name}</span>
+              <button
+                onClick={() => {
+                  onLogout();
+                  setMobileMenuOpen(false);
+                }}
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+              >
+                Logout
+              </button>
+              <button
+                onClick={() => {
+                  handleDeleteAccount();
+                  setMobileMenuOpen(false);
+                }}
+                className="px-3 py-1 bg-red-700 text-white rounded hover:bg-red-800 transition"
+              >
+                Delete Account
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  onShowLogin();
+                  setMobileMenuOpen(false);
+                }}
+                className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => {
+                  onShowSignup();
+                  setMobileMenuOpen(false);
+                }}
+                className="px-3 py-1 bg-white text-blue-600 rounded hover:bg-gray-100 transition"
+              >
+                Sign Up
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </nav>
   );
 }
